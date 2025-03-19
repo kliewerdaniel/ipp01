@@ -51,3 +51,4 @@ class Interview(Base):
     user = relationship("User", back_populates="interviews")
     questions = relationship("Question", back_populates="interview", cascade="all, delete-orphan")
     answers = relationship("Answer", back_populates="interview", cascade="all, delete-orphan")
+    responses = relationship("Response", back_populates="interview", cascade="all, delete-orphan")
