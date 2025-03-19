@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict, Any
 import os
 from pathlib import Path
 
@@ -38,6 +38,19 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL: str = "gpt-4"  # Or other models like "gpt-3.5-turbo"
+    
+    # AI Service Configuration
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "mock")  # "openai" or "mock"
+    AI_RATE_LIMIT_REQUESTS_PER_MINUTE: int = int(os.getenv("AI_RATE_LIMIT_REQUESTS_PER_MINUTE", "60"))
+    AI_RATE_LIMIT_REQUESTS_PER_DAY: int = int(os.getenv("AI_RATE_LIMIT_REQUESTS_PER_DAY", "1000"))
+    AI_CACHE_ENABLED: bool = os.getenv("AI_CACHE_ENABLED", "true").lower() == "true"
+    AI_CACHE_TTL: int = int(os.getenv("AI_CACHE_TTL", "3600"))  # 1 hour by default
+    
+    # Transcription Service Configuration
+    TRANSCRIPTION_PROVIDER: str = os.getenv("TRANSCRIPTION_PROVIDER", "mock")  # "deepgram" or "mock"
+    DEEPGRAM_API_KEY: Optional[str] = os.getenv("DEEPGRAM_API_KEY")
+    TRANSCRIPTION_RATE_LIMIT_REQUESTS_PER_MINUTE: int = int(os.getenv("TRANSCRIPTION_RATE_LIMIT_REQUESTS_PER_MINUTE", "30"))
+    TRANSCRIPTION_RATE_LIMIT_REQUESTS_PER_DAY: int = int(os.getenv("TRANSCRIPTION_RATE_LIMIT_REQUESTS_PER_DAY", "500"))
     
     # File storage
     UPLOAD_DIR: Path = Path("uploads")

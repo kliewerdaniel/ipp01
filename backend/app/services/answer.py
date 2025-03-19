@@ -5,7 +5,12 @@ import logging
 import os
 import json
 from datetime import datetime
+from app.services.transcription import default_transcription_service
+from app.services.ai import default_ai_service
 
+from typing import Optional, List, Dict, Any, Union
+from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
 from app.models.answer import Answer
 from app.models.question import Question
 from app.models.interview import Interview
@@ -133,10 +138,19 @@ def delete_answer(db: Session, db_obj: Answer) -> Answer:
 
 async def generate_feedback(
     db: Session, 
-    answer_id: str
+    answer_id: str,
+    feedback_type: str = "general"
 ) -> Optional[AnswerFeedback]:
     """
-    Generate AI feedback for an answer.
+    Generate AI feedback for an answer using the configured AI service.
+    
+    Args:
+        db: Database session
+        answer_id: The ID of the answer to generate feedback for
+        feedback_type: Type of feedback (general, technical, behavioral)
+        
+    Returns:
+        AnswerFeedback object or None if generation failed
     """
     # Get the answer with associated question
     answer = (
@@ -155,33 +169,25 @@ async def generate_feedback(
         return None
     
     try:
-        # Check if OpenAI API key is available
-        if not settings.OPENAI_API_KEY:
-            logger.error("OpenAI API key not configured")
-            return None
+        # Determine feedback type based on question category if not specified
+        if not feedback_type and answer.question.category:
+            category = answer.question.category.lower()
+            if any(tech_keyword in category for tech_keyword in ["coding", "technical", "system design", "algorithm"]):
+                feedback_type = "technical"
+            elif any(beh_keyword in category for beh_keyword in ["behavioral", "leadership", "teamwork"]):
+                feedback_type = "behavioral"
+            else:
+                feedback_type = "general"
         
-        # In a real implementation, this would call the OpenAI API
-        # For now, we'll simulate a response
-        from openai import OpenAI
-        import time
-        
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        
-        # Prepare message with context and transcription
-        messages = [
-            {"role": "system", "content": "You are an expert interview coach evaluating interview answers. Provide specific, constructive feedback on the candidate's answer along with a score from 0-100."},
-            {"role": "user", "content": f"Question: {answer.question.content}\n\nCandidate's Answer: {answer.content}\n\nProvide feedback in this JSON format: {{\"feedback\": \"detailed feedback here\", \"score\": 85, \"strengths\": [\"strength1\", \"strength2\"], \"weaknesses\": [\"weakness1\", \"weakness2\"], \"improvement_suggestions\": [\"suggestion1\", \"suggestion2\"]}}"}
-        ]
-        
-        # Get OpenAI response
-        response = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=messages,
-            response_format={"type": "json_object"}
+        # Use the AI service to generate feedback
+        result = await default_ai_service.generate_feedback(
+            question=answer.question.content,
+            answer=answer.content,
+            feedback_type=feedback_type
         )
         
         # Parse response
-        feedback_data = json.loads(response.choices[0].message.content)
+        feedback_data = json.loads(result.content)
         
         # Create feedback object
         feedback = AnswerFeedback(
@@ -201,6 +207,11 @@ async def generate_feedback(
         db.refresh(answer)
         
         logger.info(f"Generated feedback for answer {answer_id} with score {feedback.score}")
+        
+        # Log token usage if available (for monitoring costs)
+        if result.usage:
+            logger.info(f"Token usage for answer {answer_id}: {result.usage}")
+        
         return feedback
         
     except Exception as e:
@@ -214,7 +225,15 @@ async def transcribe_audio(
     audio_path: str
 ) -> Optional[str]:
     """
-    Transcribe audio file and update the answer.
+    Transcribe audio file and update the answer using the configured transcription service.
+    
+    Args:
+        db: Database session
+        answer_id: The ID of the answer to update
+        audio_path: Path to the audio file
+        
+    Returns:
+        Transcribed text or None if transcription failed
     """
     answer = get_answer_by_id(db, answer_id)
     if not answer:
@@ -227,31 +246,26 @@ async def transcribe_audio(
             logger.error(f"Audio file not found: {audio_path}")
             return None
         
-        # In a real implementation, this would use a speech recognition API/library
-        # For now, we'll simulate a transcription
-        import time
-        import random
+        # Use the transcription service to transcribe audio
+        transcription_result = await default_transcription_service.transcribe_file(
+            file_path=audio_path
+        )
         
-        # Simulate processing time
-        time.sleep(1)
-        
-        # Sample transcribed text for testing
-        question = db.query(Question).filter(Question.id == answer.question_id).first()
-        
-        if question:
-            # Generate a somewhat relevant response based on the question
-            transcription = f"I believe the best approach to this is to carefully consider all aspects of the {question.category or 'situation'} before making a decision. Based on my experience, I would first analyze the requirements and then implement a solution that balances efficiency and maintainability."
-        else:
-            transcription = "Thank you for the question. Based on my experience, I would approach this situation by analyzing the key factors and implementing a strategic solution that addresses all stakeholders' needs."
+        # Get transcribed text
+        transcription = transcription_result.text
         
         # Update the answer with transcription
         answer.content = transcription
+        
+        # Store confidence if available
+        if hasattr(answer, 'transcription_confidence') and transcription_result.confidence is not None:
+            answer.transcription_confidence = transcription_result.confidence
         
         db.add(answer)
         db.commit()
         db.refresh(answer)
         
-        logger.info(f"Transcribed audio for answer {answer_id}")
+        logger.info(f"Transcribed audio for answer {answer_id} with confidence {transcription_result.confidence:.2f}")
         return transcription
         
     except Exception as e:
