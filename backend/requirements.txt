@@ -10,10 +10,14 @@ sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.6
 alembic>=1.10.4
 
-# Authentication
+# Authentication and Security
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-dotenv>=1.0.0
+redis>=4.5.1           # For rate limiting, session management, token blacklisting
+pyotp>=2.8.0           # For multi-factor authentication
+httpx>=0.24.0          # For OAuth2 HTTP requests
+itsdangerous>=2.1.2    # For secure token generation
 
 # AI Integration
 openai>=0.27.0
