@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     PROJECT_VERSION: str = "0.1.0"
     
     # API settings
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/api"
     
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecretkey")  # Change in production!
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        "postgresql://postgres:postgres@localhost/interview_prep"
+        "sqlite:///./interview_prep.db"
     )
     
     # Stripe

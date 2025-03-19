@@ -38,7 +38,7 @@ class Payment(Base):
     status = Column(Enum(PaymentStatus), nullable=False)
     payment_type = Column(Enum(PaymentType), nullable=False)
     description = Column(String, nullable=True)
-    metadata = Column(String, nullable=True)  # JSON string with additional data
+    payment_metadata = Column(String, nullable=True)  # JSON string with additional data
     payment_method = Column(String, nullable=True)  # e.g., "card", "bank_transfer"
     receipt_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)

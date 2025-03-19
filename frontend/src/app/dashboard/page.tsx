@@ -1,12 +1,8 @@
-import { Metadata } from 'next';
+"use client";
+
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import Timer from '@/components/ui/Timer';
 import Link from 'next/link';
-
-export const metadata: Metadata = {
-  title: 'Dashboard - Interview Prep Platform',
-  description: 'Your interview preparation dashboard',
-};
 
 export default function DashboardPage() {
   return (

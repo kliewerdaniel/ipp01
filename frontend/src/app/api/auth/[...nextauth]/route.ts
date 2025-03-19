@@ -18,7 +18,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const response = await axios.post(`${API_URL}/api/auth/login`, {
+          const response = await axios.post(`${API_URL}/api/auth/login/json`, {
             email: credentials.email,
             password: credentials.password,
           });

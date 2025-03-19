@@ -7,6 +7,7 @@ import time
 from app.core.config import settings
 from app.api.routes import api_router
 from app.core.security import get_current_user
+from app.db.init_db import check_and_init_db
 
 # Set up logging
 logging.basicConfig(
@@ -48,6 +49,11 @@ async def log_requests(request, call_next):
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+# Initialize database
+@app.on_event("startup")
+async def init_app():
+    check_and_init_db()
 
 # Include API routes
 app.include_router(api_router, prefix=settings.API_V1_STR)
