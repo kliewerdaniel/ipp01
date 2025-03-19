@@ -313,19 +313,32 @@ async def stripe_webhook(
         payload = await request.body()
         payload_str = payload.decode("utf-8")
         
-        # Verify webhook signature in a real implementation
-        # For this example, we'll just parse the payload
-        
+        # Parse the payload
         event_data = json.loads(payload_str)
+        
+        # Verify webhook signature if available
+        if stripe_signature and settings.STRIPE_WEBHOOK_SECRET:
+            from app.services.stripe_service import construct_event
+            try:
+                event_data = construct_event(json.loads(payload_str), stripe_signature)
+            except Exception as e:
+                logger.error(f"Error validating webhook signature: {str(e)}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid webhook signature: {str(e)}"
+                )
+        
         event_type = event_data.get("type", "")
         
         # Process different types of events
         if event_type.startswith("customer.subscription"):
             # Handle subscription events
-            result = process_stripe_webhook(event_data)
+            from app.services.subscription import process_subscription_webhook
+            result = process_subscription_webhook(db, event_data)
             return WebhookPayloadResponse(
                 received=True,
-                event_type=event_type
+                event_type=event_type,
+                details=result
             )
         
         elif event_type.startswith("payment_intent") or event_type.startswith("charge"):
@@ -333,13 +346,25 @@ async def stripe_webhook(
             result = process_payment_webhook(db, event_data)
             return WebhookPayloadResponse(
                 received=True,
-                event_type=event_type
+                event_type=event_type,
+                details=result
+            )
+        
+        elif event_type.startswith("invoice"):
+            # Handle invoice events
+            # Add invoice handling logic here if needed
+            return WebhookPayloadResponse(
+                received=True,
+                event_type=event_type,
+                details={"status": "processed", "type": "invoice"}
             )
         
         # Unhandled event type
+        logger.info(f"Received unhandled webhook event type: {event_type}")
         return WebhookPayloadResponse(
             received=True,
-            event_type=event_type
+            event_type=event_type,
+            details={"status": "unhandled"}
         )
     
     except Exception as e:

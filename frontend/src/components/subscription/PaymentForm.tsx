@@ -23,6 +23,7 @@ interface PaymentFormProps {
   amount: number;
   billingCycle: 'monthly' | 'yearly';
   currency?: string;
+  clientSecret?: string | null;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({

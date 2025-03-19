@@ -100,3 +100,4 @@ class WebhookPayloadResponse(BaseModel):
     """
     received: bool
     event_type: str
+    details: Optional[Dict[str, Any]] = None
